@@ -8,7 +8,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="https://cdn.autoproctor.co/ap-entry.js"></script>
 
-  <!-- AutoProctor + Quiz Styling -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -17,12 +16,7 @@
       max-width: 1000px;
       margin: auto;
     }
-
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-
+    h1 { text-align: center; color: #333; }
     .question {
       background: #fff;
       padding: 15px;
@@ -30,27 +24,15 @@
       border: 1px solid #ddd;
       border-radius: 10px;
     }
-
-    .options label {
-      display: block;
-      margin: 5px 0;
-    }
-
-    .correct {
-      background-color: #d4edda;
-    }
-
-    .incorrect {
-      background-color: #f8d7da;
-    }
-
+    .options label { display: block; margin: 5px 0; }
+    .correct { background-color: #d4edda; }
+    .incorrect { background-color: #f8d7da; }
     #result {
       font-size: 1.2em;
       text-align: center;
       margin-top: 20px;
       font-weight: bold;
     }
-
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -60,29 +42,15 @@
       border-radius: 8px;
       cursor: pointer;
     }
-
-    button:hover {
-      background: #0056b3;
-    }
-
-    .container {
-      margin-top: 30px;
-    }
-
+    button:hover { background: #0056b3; }
+    .container { margin-top: 30px; }
     .ctas {
       display: flex;
       gap: 10px;
       justify-content: center;
     }
-
-    #btn-start {
-      background-color: green;
-    }
-
-    #btn-stop {
-      background-color: red;
-    }
-
+    #btn-start { background-color: green; }
+    #btn-stop { background-color: red; }
     #ap-test-proctoring-status {
       font-size: 20px;
       margin-top: 15px;
@@ -104,7 +72,7 @@
     <div id="ap-test-proctoring-status"></div>
   </div>
 
-  <!-- Quiz Starts -->
+  <!-- Quiz -->
   <div id="quiz-container" style="display:none;">
     <form id="quizForm"></form>
     <div style="text-align:center;">
@@ -115,8 +83,9 @@
 
   <!-- AutoProctor Setup -->
   <script>
-    const CLIENT_ID = "tnmvX6pir7";  // Replace with your actual Test ID
-    const CLIENT_SECRET = null;      // Optional
+    const CLIENT_ID = "tnmvX6pir7";  // Your actual test ID from AutoProctor
+    const CLIENT_SECRET = null;      // Leave as null if not using HMAC
+
     const getTestAttemptId = () => Math.random().toString(36).slice(2, 7);
 
     function getHashTestAttemptId(testAttemptId) {
@@ -130,7 +99,12 @@
     function getCredentials() {
       const testAttemptId = getTestAttemptId();
       const hashedTestAttemptId = getHashTestAttemptId(testAttemptId);
-      return { clientId: CLIENT_ID, testAttemptId, hashedTestAttemptId };
+      return {
+        clientId: CLIENT_ID,
+        testAttemptId,
+        hashedTestAttemptId,
+        clientUrl: window.location.href  // Helps for direct access testing
+      };
     }
 
     const getReportOptions = () => ({
@@ -158,29 +132,44 @@
     async function init() {
       const credentials = getCredentials();
       const apInstance = new AutoProctor(credentials);
-      await apInstance.setup(proctoringOptions);
 
-      document.getElementById("btn-start").addEventListener("click", () => apInstance.start());
+      try {
+        await apInstance.setup(proctoringOptions);
+        console.log("✅ AutoProctor setup successful.");
+      } catch (error) {
+        console.error("❌ AutoProctor setup failed:", error);
+        alert("AutoProctor setup failed. See the browser console for details.");
+        return;
+      }
+
+      document.getElementById("btn-start").addEventListener("click", async () => {
+        try {
+          await apInstance.start();
+        } catch (error) {
+          console.error("❌ Proctoring start failed:", error);
+          alert("Proctoring could not start. Allow webcam/mic access and try again.");
+        }
+      });
 
       window.addEventListener("apMonitoringStarted", () => {
         document.getElementById("btn-start").disabled = true;
         document.getElementById("btn-stop").disabled = false;
-        document.getElementById("ap-test-proctoring-status").innerText = "Proctoring Started...";
+        document.getElementById("ap-test-proctoring-status").innerText = "✅ Proctoring Started...";
         document.getElementById("quiz-container").style.display = "block";
       });
 
       document.getElementById("btn-stop").addEventListener("click", () => apInstance.stop());
 
-      window.addEventListener("apMonitoringStopped", async () => {
+      window.addEventListener("apMonitoringStopped", () => {
         apInstance.showReport(getReportOptions());
-        document.getElementById("ap-test-proctoring-status").innerText = "Proctoring stopped.";
+        document.getElementById("ap-test-proctoring-status").innerText = ⏹️ Proctoring Stopped.";
       });
     }
 
     window.addEventListener("load", init);
   </script>
 
-  <!-- Quiz Rendering Logic -->
+  <!-- Quiz Logic -->
   <script>
     const quizData = [
       {
@@ -237,7 +226,7 @@
 
     const quizForm = document.getElementById("quizForm");
 
-    quizData.slice(0, 5).forEach((q, idx) => {
+    quizData.forEach((q, idx) => {
       const div = document.createElement("div");
       div.className = "question";
       let optionsHTML = `<p><strong>Q${idx + 1}:</strong> ${q.question}</p>`;
@@ -255,7 +244,7 @@
 
     function submitQuiz() {
       let score = 0;
-      quizData.slice(0, 5).forEach((q, idx) => {
+      quizData.forEach((q, idx) => {
         const selected = document.querySelector(`input[name="q${idx}"]:checked`);
         const questionDiv = quizForm.children[idx];
         if (selected) {
@@ -272,6 +261,5 @@
       document.getElementById("result").innerText = `You scored ${score} out of 5`;
     }
   </script>
-
 </body>
 </html>
